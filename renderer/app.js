@@ -1,6 +1,11 @@
 'use strict';
 const $ = (s) => document.querySelector(s);
 const HOME = 'https://gall.dcinside.com/';
+// First screen on launch = the login page, returning to "my gallog" after a successful login.
+// The exact gallog URL is learned from the logged-in account box (see 'meta' → myGallog);
+// until then the gallog root is used, which the site resolves to your own gallog once logged in.
+const startUrl = () => 'https://sign.dcinside.com/login?s_url=' +
+  encodeURIComponent(store.get('myGallog', '') || 'https://gallog.dcinside.com/');
 const PARTITION = 'persist:dc';
 
 // ---------------------------------------------------------------- storage
@@ -161,6 +166,21 @@ function trackRecent(url) {
   store.set('recent', recent);
 }
 
+// recent-gallery cache (com.workspace.cache): remove one / clear all.
+// Galleries registered as modules are separate and never touched here.
+function removeRecent(id) {
+  recent = recent.filter((r) => r.id !== id);
+  store.set('recent', recent);
+  renderTree();
+}
+function clearRecent() {
+  const moduleIds = new Set(galleries.map((g) => g.id));
+  recent = recent.filter((r) => moduleIds.has(r.id));   // keep only entries hidden behind modules
+  store.set('recent', recent);
+  renderTree();
+  balloon('Caches invalidated', 'com.workspace.cache was cleared.');
+}
+
 function addCurrentGallery() {
   const g = active && parseGall(active.url);
   if (!g) { balloon('Cannot add module', 'Open a gallery page first.'); return; }
@@ -181,7 +201,7 @@ function node(depth, opts) {
     `<span class="ico ${opts.icoClass || ''}">${opts.ico || ''}</span>` +
     `<span class="label"></span>` +
     (opts.meta ? `<span class="meta"></span>` : '') +
-    (opts.onRemove ? `<span class="x" title="Remove">✕</span>` : '');
+    (opts.onRemove ? `<span class="x" title="${opts.removeTitle || 'Remove'}">${opts.removeIcon || '✕'}</span>` : '');
   d.querySelector('.label').textContent = opts.label;
   if (opts.meta) d.querySelector('.meta').textContent = opts.meta;
   if (opts.tooltip && !boss) d.title = opts.tooltip;
@@ -207,14 +227,14 @@ function renderTree() {
     add(depth, { label, ico: '▰', icoClass: 'dir', expandable: true, open, onToggle: () => toggleExpand(key), ...extra });
     if (open) children(depth + 1);
   };
-  const gallNode = (g, depth, removable) => {
+  const gallNode = (g, depth, onRemove) => {
     const key = 'g:' + g.id;
     const sel = cur && cur.id === g.id;
     add(depth, {
       label: pascal(g.id) + 'Repository.java', ico: 'C', icoClass: 'java', expandable: true,
       open: expanded.has(key), selected: sel && cur.page === 'lists' && !cur.best, tooltip: g.name,
       onToggle: () => toggleExpand(key), onOpen: (nt) => open(gallUrl(g), nt),
-      onRemove: removable ? () => { galleries = galleries.filter((x) => x.id !== g.id); store.set('galleries', galleries); renderTree(); } : null,
+      onRemove,
     });
     if (expanded.has(key)) {
       add(depth + 1, { label: 'findAll()', ico: 'm', icoClass: 'cls', onOpen: (nt) => open(gallUrl(g), nt) });
@@ -228,11 +248,17 @@ function renderTree() {
     dir('src', d1, 'src/main/java', (d2) => {
       dir('modules', d2, 'com.workspace.modules', (d3) => {
         if (!galleries.length) add(d3, { label: '(Ctrl+N or Shift×2 to find a gallery)', ico: '' });
-        galleries.forEach((g) => gallNode(g, d3, true));
+        galleries.forEach((g) => gallNode(g, d3, () => {
+          galleries = galleries.filter((x) => x.id !== g.id);
+          store.set('galleries', galleries);
+          renderTree();
+        }));
       });
+      const cached = recent.filter((r) => !galleries.some((g) => g.id === r.id));
       dir('recent', d2, 'com.workspace.cache', (d3) => {
-        recent.filter((r) => !galleries.some((g) => g.id === r.id)).forEach((g) => gallNode(g, d3, false));
-      });
+        if (!cached.length) add(d3, { label: '(empty)', ico: '' });
+        cached.forEach((g) => gallNode(g, d3, () => removeRecent(g.id)));
+      }, cached.length ? { onRemove: clearRecent, removeIcon: '🗑', removeTitle: 'Invalidate cache (clear all)' } : {});
       add(d2, { label: 'Application.java', ico: 'C', icoClass: 'java', onOpen: (nt) => open(HOME, nt) });
     });
     add(d1, { label: 'build.gradle.kts', ico: '⚙' });
@@ -272,6 +298,9 @@ function renderBookmarks() {
 function onGuestMessage(tab, channel, data) {
   if (channel === 'alarm') return pushEvent(data.text, data.href);
   if (channel === 'meta') {
+    if (data.myGallog && /^https:\/\/gallog\.dcinside\.com\/[A-Za-z0-9_]+\/?$/.test(data.myGallog)) {
+      store.set('myGallog', data.myGallog);
+    }
     if (data.galleryName) {
       tab.galleryName = data.galleryName;
       const g = parseGall(tab.url);
@@ -580,8 +609,11 @@ window.addEventListener('keydown', (e) => {
 function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
 
 // ---------------------------------------------------------------- boot
-const openTabs = store.get('openTabs', null);
-if (openTabs && openTabs.length) openTabs.forEach((u, i) => newTab(u, i === 0)); else newTab(HOME);
+// Always start on login → my gallog; tabs from the last session are reopened behind it.
+newTab(startUrl(), true);
+const openTabs = (store.get('openTabs', null) || [])
+  .filter((u) => !/^https:\/\/(gallog|sign|sso)\.dcinside\.com\//.test(u));
+openTabs.forEach((u) => newTab(u, false));
 function saveTabs() { store.set('openTabs', tabs.map((t) => t.url)); }
 window.addEventListener('beforeunload', saveTabs);
 renderEvents();

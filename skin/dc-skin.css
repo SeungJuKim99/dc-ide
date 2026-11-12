@@ -598,3 +598,9 @@ body .ide-dialog .ide-dlg-logo { font-family: "JetBrains Mono", Consolas, monosp
    ==================================================================== */
 .gallog_wrap .photo, .gallog_wrap .photo.sp_img, .gallog_wrap #profile_img, span.ide-avatar { display: none !important; }
 .cmt_txtbox { padding-left: 0 !important; }
+
+/* ====================================================================
+   Ad slot above the post body ("zzbang" slot: ad iframe, or a fallback ad image
+   when the iframe is blocked). Not part of the post itself.
+   ==================================================================== */
+#zzbang_div, #zzbang_ad, #zzbang_img, #ad_nv_slot, .writing_view_box ins.adsbygoogle, .writing_view_box ins.kakao_ad_area { display: none !important; }

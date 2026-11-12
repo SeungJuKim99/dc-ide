@@ -10,13 +10,15 @@ npm install
 npm start
 ```
 
+On Windows you can also just double-click `dcideexe.bat` (it installs dependencies on first run).
+
 ## What looks like what
 
 | IDE element | dcinside |
 |---|---|
 | Editor tabs (`ProgrammingRepository.java`, `…Entity1234.java`, `…Command.java`) | gallery list / post / write page |
 | Project tree › `com.workspace.modules` | galleries you added with **+** (`findAll()` = list, `findRecommended()` = 개념글, `save()` = 글쓰기) |
-| `com.workspace.cache` | recently visited galleries |
+| `com.workspace.cache` | recently visited galleries (hover: ✕ removes one, 🗑 on the folder clears all; modules are kept) |
 | Bookmarks (★ stripe) | saved posts |
 | Address bar ("Search Everywhere") | URL, gallery id (e.g. `programming`), or search keyword |
 | Notifications (🔔 stripe, bottom panel, balloon) | dcinside's own comment/reply alarms on your posts |
@@ -40,6 +42,8 @@ Views/recommend columns, IPs, nick icons, notice/AD/survey rows and the right-si
 - IPs, nick icons, 실베추/펌/공유/스크랩/신고 row and ads are hidden. Hover any renamed label to see the original.
 
 ### Login = "GitLab 계정 로그인" dialog
+The app **starts on this dialog**; after a successful login it goes straight to your own gallog
+(the gallog URL is remembered from the account box once you are logged in). Cancel/✕ goes to the main page.
 Open it from the project tree: **External Libraries › Auth: session-config** (or the login box on the right).
 - 사용자 = dcinside 식별 코드(아이디), 토큰 = 비밀번호
 - 사용자 이름 기억 = 식별 코드 저장, 생성... = 비밀번호 찾기, 취소/✕ = 원래 페이지로 돌아가기

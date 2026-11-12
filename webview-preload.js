@@ -398,6 +398,8 @@ function disguiseLogin() {
     const back = new URLSearchParams(location.search).get('s_url');
     let u = 'https://gall.dcinside.com/';
     try { if (back && /^https:\/\/([a-z0-9-]+\.)*dcinside\.com\//.test(decodeURIComponent(back))) u = decodeURIComponent(back); } catch { /* keep default */ }
+    // login started from the app's launch screen returns to a gallog; cancelling goes to the main page instead
+    if (/^https:\/\/gallog\.dcinside\.com\//.test(u)) u = 'https://gall.dcinside.com/';
     location.href = u;
   };
   dlg.querySelector('.ide-dlg-cancel').addEventListener('click', leave);
@@ -459,6 +461,12 @@ function disguiseAccountBox() {
     // keep the site's own nickname element (it opens the user menu)
     found.el.classList.add('ide-nick-host');
     box.classList.add('ide-logged-in');
+  }
+  // remember "my gallog" so the next launch can return there right after login
+  for (const el of box.querySelectorAll('a, button')) {
+    const src = (el.getAttribute('href') || '') + ' ' + (el.getAttribute('onclick') || '');
+    const m = src.match(/(?:https?:)?\/\/gallog\.dcinside\.com\/([A-Za-z0-9_]+)/);
+    if (m) { ipcRenderer.sendToHost('meta', { myGallog: `https://gallog.dcinside.com/${m[1]}` }); break; }
   }
 }
 
